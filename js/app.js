@@ -1,7 +1,3 @@
-// Place all the skins in an array so the user can cycle through them
-var skins = ['images/char-boy.png', 'images/char-cat-girl.png', 'images/char-horn-girl.png', 'images/char-pink-girl.png', 'images/char-princess-girl.png'];
-// The Game Over flag, initially set to false
-var lostTheGame = false;
 // Enemies our player must avoid
 var Enemy = function() {
     // Variables applied to each of our instances go here,
@@ -29,7 +25,7 @@ Enemy.prototype.update = function(dt) {
     // check for collisions
     // we're passing the death event since this kills the player
     // and we're passing 'this' because this is the actor we want to check against
-    collisionCheck('death', this);
+    this.collisionCheck('death');
 
     if (this.x <= 505){
         this.x = this.x + this.speed*dt;
@@ -37,7 +33,8 @@ Enemy.prototype.update = function(dt) {
         this.x = -100;
     }
     // update the enemy hitbox
-    updateHitBox(this.x, this.y, this.hitBox);
+    this.hitBox.x = this.x;
+    this.hitBox.y = this.y;
 };
 
 // Draw the enemy on the screen, required method for game
@@ -47,12 +44,26 @@ Enemy.prototype.render = function() {
 
 };
 
+Enemy.prototype.collisionCheck = function(event) {
+    // collision detection logic from
+    // https://developer.mozilla.org/en-US/docs/Games/Techniques/2D_collision_detection
+    if (this.hitBox.x < player.hitBox.x + player.hitBox.width
+        && this.hitBox.x + this.hitBox.width > player.hitBox.x
+        && this.hitBox.y < player.hitBox.y + player.hitBox.height
+        && this.hitBox.height + this.hitBox.y > player.hitBox.y) {
+        //collision detected! Triggering player event
+        player.playerEvent(event);
+    }
+};
 
 // Now write your own player class
 // This class requires an update(), render() and
 // a handleInput() method.
 var Player = function() {
-
+    // The Game Over flag, initially set to false
+    this.lostTheGame = false;
+    // Place all the skins in an array so the user can cycle through them
+    this.skins = ['images/char-boy.png', 'images/char-cat-girl.png', 'images/char-horn-girl.png', 'images/char-pink-girl.png', 'images/char-princess-girl.png'];
     // starting position of the player, we want to keep this
     // for position resets
     this.initialX = 200;
@@ -63,7 +74,7 @@ var Player = function() {
 
     // Set the player skin to the first one in the array
     this.skindex = 0;
-    this.sprite = skins[this.skindex];
+    this.sprite = this.skins[this.skindex];
 
     this.x = this.initialX;
     this.y = this.initialY;
@@ -100,7 +111,7 @@ Player.prototype.handleInput = function(keyCode){
             // cycle the skin index (or skindex) to the previous value
             // or if we're at the first index, move to the last index
             if(this.skindex <= 0){
-                this.skindex = skins.length - 1;
+                this.skindex = this.skins.length - 1;
             } else{
                 this.skindex = this.skindex - 1;
             }
@@ -108,8 +119,8 @@ Player.prototype.handleInput = function(keyCode){
         case 'next-skin':
             // cycle the skin index to the next skin
             // or if we're at the last index already, move to the first
-            if(this.skindex >= skins.length-1){
-                this.skindex = (skins.length-1) - this.skindex;
+            if(this.skindex >= this.skins.length-1){
+                this.skindex = (this.skins.length-1) - this.skindex;
             } else{
                 this.skindex = this.skindex + 1;
             }
@@ -117,8 +128,8 @@ Player.prototype.handleInput = function(keyCode){
         case 'enter':
             // This is only used if the user has lost the game
             // otherwise we just ignore it
-            if(lostTheGame){
-                resetGame();
+            if(this.lostTheGame){
+                this.resetGame();
             }
             break;
 
@@ -130,12 +141,13 @@ Player.prototype.update = function () {
     if(this.y <= 0){
         // the player has reached the top of the board
         // we're sending the win string because this is a win condition
-        playerEvent('win');
+        this.playerEvent('win');
     }
     // update the player's hit box
-    updateHitBox(this.x, this.y, this.hitBox);
+    this.hitBox.x = this.x;
+    this.hitBox.y = this.y;
     // update skin if necessary
-    this.sprite = skins[this.skindex];
+    this.sprite = this.skins[this.skindex];
     this.render();
 };
 
@@ -147,7 +159,7 @@ Player.prototype.render = function(){
     ctx.fillText("Lives: " + this.lives, 400, 80);
 
     // If the player has lost, we want to display a Game Over message
-    if(lostTheGame){
+    if(this.lostTheGame){
 
         ctx.font = "50px Arial";
         ctx.fillText("Game Over", 130, 300);
@@ -155,6 +167,81 @@ Player.prototype.render = function(){
         ctx.fillText("Press Enter to Play Again", 30, 360);
 
     }
+};
+
+// Something happened to the player
+// Event is the event text passed in by the caller
+// Right now we're only checking for a win or a death
+// But this will make it easier to add other events in the future
+Player.prototype.playerEvent = function(event){
+    switch(event){
+        case 'death':
+            this.lossCondition();
+            break;
+        case 'win':
+            this.winCondition();
+            break;
+    }
+};
+
+// Resets the player's position to the start
+Player.prototype.resetPosition = function () {
+    this.x = this.initialX;
+    this.y = this.initialY;
+};
+
+Player.prototype.winCondition = function () {
+    // if you've already lost the game, you can't win
+    if (!this.lostTheGame){
+        // Hot Dog, we have a weiner!
+        this.score = this.score + 1;
+        console.log("Level UP! Score = " + this.score);
+        // make it more challenging, increase enemy speeds by 1.5
+        allEnemies.forEach(function(enemy) {
+            enemy.speed = enemy.speed * 1.5;
+        });
+        this.resetPosition();
+    }
+};
+
+
+// Called when the player loses a life
+Player.prototype.lossCondition = function(){
+    // You died, lose a life
+    this.lives = this.lives - 1;
+    console.log("You have " + this.lives + " lives left");
+    // If the player is out of lives, we set the lost flag,
+    // and set all hitboxes to 0 size
+    if(this.lives <= 0){
+        this.lostTheGame = true;
+        this.hitBox.width = 0;
+        this.hitBox.height = 0;
+        allEnemies.forEach(function(enemy){
+            enemy.hitBox.width = 0;
+            enemy.hitBox.height = 0;
+        });
+    } else{
+        // if the player has lives left we just reset their position
+        this.resetPosition();
+    }
+
+};
+
+// When a player starts over, we reset all the initial values
+Player.prototype.resetGame = function() {
+    this.hitBox.width = this.hitBoxWidth;
+    this.hitBox.height = this.hitBoxHeight;
+    this.x = this.initialX;
+    this.y = this.initialY;
+    this.lives = 3;
+    this.score = 0;
+    allEnemies.forEach(function(enemy){
+        enemy.speed = enemy.initialSpeed;
+        enemy.hitBox.width = enemy.hitBoxWidth;
+        enemy.hitBox.height = enemy.hitBoxHeight;
+    });
+    // don't forget to turn off the lost flag
+    this.lostTheGame = false;
 };
 
 
@@ -175,102 +262,6 @@ enemyBottom.sprite = 'images/enemy-bug-green.png';
 var player = new Player();
 allEnemies = [enemyTop, enemyMiddle, enemyBottom];
 
-
-// Resets the player's position to the start
-var resetPlayer = function () {
-    player.x = player.initialX;
-    player.y = player.initialY;
-};
-
-// Something happened to the player
-// Event is the event text passed in by the caller
-// Right now we're only checking for a win or a death
-// But this will make it easier to add other events in the future
-var playerEvent = function(event){
-    switch(event){
-        case 'death':
-            lossConditions();
-            break;
-        case 'win':
-            winConditions();
-            break;
-    }
-};
-
-// generic hitbox update function
-// this reduces duplicate code since both enemies
-// and the player have hitboxes, and they update
-// the same way
-var updateHitBox = function(x, y, hitBox){
-    hitBox.x = x;
-    hitBox.y = y;
-};
-
-// Called when the player loses a life
-var lossConditions = function(){
-    // You died, lose a life
-    player.lives = player.lives - 1;
-    console.log("You have " + player.lives + " lives left");
-    // If the player is out of lives, we set the lost flag,
-    // and set all hitboxes to 0 size
-    if(player.lives <= 0){
-        lostTheGame = true;
-        player.hitBox.width = 0;
-        player.hitBox.height = 0;
-        allEnemies.forEach(function(enemy){
-            enemy.hitBox.width = 0;
-            enemy.hitBox.height = 0;
-        });
-    } else{
-        // if the player has lives left we just reset their position
-        resetPlayer();
-    }
-
-};
-
-var winConditions = function () {
-    // if you've already lost the game, you can't win
-    if (!lostTheGame){
-        // Hot Dog, we have a weiner!
-        player.score = player.score + 1;
-        console.log("Level UP! Score = " + player.score);
-        // make it more challenging, increase enemy speeds by 1.5
-        allEnemies.forEach(function(enemy) {
-            enemy.speed = enemy.speed * 1.5;
-        });
-        resetPlayer();
-    }
-};
-
-
-// When a player starts over, we reset all the initial values
-var resetGame = function() {
-    player.hitBox.width = player.hitBoxWidth;
-    player.hitBox.height = player.hitBoxHeight;
-    player.x = player.initialX;
-    player.y = player.initialY;
-    player.lives = 3;
-    player.score = 0;
-    allEnemies.forEach(function(enemy){
-        enemy.speed = enemy.initialSpeed;
-        enemy.hitBox.width = enemy.hitBoxWidth;
-        enemy.hitBox.height = enemy.hitBoxHeight;
-    });
-    // don't forget to turn off the lost flag
-    lostTheGame = false;
-};
-
-var collisionCheck = function(event, actor) {
-    // collision detection logic from
-    // https://developer.mozilla.org/en-US/docs/Games/Techniques/2D_collision_detection
-    if (actor.hitBox.x < player.hitBox.x + player.hitBox.width
-        && actor.hitBox.x + actor.hitBox.width > player.hitBox.x
-        && actor.hitBox.y < player.hitBox.y + player.hitBox.height
-        && actor.hitBox.height + actor.hitBox.y > player.hitBox.y) {
-        //collision detected! Triggering player event
-        playerEvent(event);
-    }
-};
 
 // This listens for key presses and sends the keys to your
 // Player.handleInput() method. You don't need to modify this.
