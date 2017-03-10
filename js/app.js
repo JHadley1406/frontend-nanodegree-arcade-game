@@ -25,6 +25,12 @@ Enemy.prototype.update = function(dt) {
     // You should multiply any movement by the dt parameter
     // which will ensure the game runs at the same speed for
     // all computers.
+
+    // check for collisions
+    // we're passing the death event since this kills the player
+    // and we're passing 'this' because this is the actor we want to check against
+    collisionCheck('death', this);
+
     if (this.x <= 505){
         this.x = this.x + this.speed*dt;
     } else {
@@ -38,16 +44,7 @@ Enemy.prototype.update = function(dt) {
 Enemy.prototype.render = function() {
 
     ctx.drawImage(Resources.get(this.sprite), this.x, this.y);
-    // collision detection logic from
-    // https://developer.mozilla.org/en-US/docs/Games/Techniques/2D_collision_detection
-    if(this.hitBox.x < player.hitBox.x + player.hitBox.width
-        && this.hitBox.x + this.hitBox.width > player.hitBox.x
-        && this.hitBox.y < player.hitBox.y + player.hitBox.height
-        && this.hitBox.height + this.hitBox.y > player.hitBox.y){
-        // You hit a bug!
-        // We're passing true to resetPlayer because the player died
-        playerEvent(true);
-    }
+
 };
 
 
@@ -132,8 +129,8 @@ Player.prototype.handleInput = function(keyCode){
 Player.prototype.update = function () {
     if(this.y <= 0){
         // the player has reached the top of the board
-        // we're sending false because the player won
-        playerEvent(false);
+        // we're sending the win string because this is a win condition
+        playerEvent('win');
     }
     // update the player's hit box
     updateHitBox(this.x, this.y, this.hitBox);
@@ -169,6 +166,7 @@ enemyTop.y = 73;
 var enemyMiddle = new Enemy();
 enemyMiddle.y = 146;
 enemyMiddle.initialSpeed = 50;
+enemyMiddle.speed = 50;
 enemyMiddle.sprite = 'images/enemy-bug-blue.png';
 var enemyBottom = new Enemy();
 enemyBottom.y = 292;
@@ -260,6 +258,18 @@ var resetGame = function() {
     });
     // don't forget to turn off the lost flag
     lostTheGame = false;
+};
+
+var collisionCheck = function(event, actor) {
+    // collision detection logic from
+    // https://developer.mozilla.org/en-US/docs/Games/Techniques/2D_collision_detection
+    if (actor.hitBox.x < player.hitBox.x + player.hitBox.width
+        && actor.hitBox.x + actor.hitBox.width > player.hitBox.x
+        && actor.hitBox.y < player.hitBox.y + player.hitBox.height
+        && actor.hitBox.height + actor.hitBox.y > player.hitBox.y) {
+        //collision detected! Triggering player event
+        playerEvent(event);
+    }
 };
 
 // This listens for key presses and sends the keys to your
