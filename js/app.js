@@ -1,7 +1,8 @@
-
+// Place all the skins in an array so the user can cycle through them
 var skins = ['images/char-boy.png', 'images/char-cat-girl.png', 'images/char-horn-girl.png', 'images/char-pink-girl.png', 'images/char-princess-girl.png'];
-// Enemies our player must avoid
+// The Game Over flag, initially set to false
 var lostTheGame = false;
+// Enemies our player must avoid
 var Enemy = function() {
     // Variables applied to each of our instances go here,
     // we've provided one for you to get started
@@ -59,9 +60,11 @@ var Player = function() {
     // for position resets
     this.initialX = 200;
     this.initialY = 400;
+    // Initial hitbox size
     this.hitBoxWidth = 50;
     this.hitBoxHeight = 60;
 
+    // Set the player skin to the first one in the array
     this.skindex = 0;
     this.sprite = skins[this.skindex];
 
@@ -97,6 +100,8 @@ Player.prototype.handleInput = function(keyCode){
             }
             break;
         case 'prev-skin':
+            // cycle the skin index (or skindex) to the previous value
+            // or if we're at the first index, move to the last index
             if(this.skindex <= 0){
                 this.skindex = skins.length - 1;
             } else{
@@ -104,6 +109,8 @@ Player.prototype.handleInput = function(keyCode){
             }
             break;
         case 'next-skin':
+            // cycle the skin index to the next skin
+            // or if we're at the last index already, move to the first
             if(this.skindex >= skins.length-1){
                 this.skindex = (skins.length-1) - this.skindex;
             } else{
@@ -111,6 +118,8 @@ Player.prototype.handleInput = function(keyCode){
             }
             break;
         case 'enter':
+            // This is only used if the user has lost the game
+            // otherwise we just ignore it
             if(lostTheGame){
                 resetGame();
             }
@@ -140,6 +149,7 @@ Player.prototype.render = function(){
     ctx.fillText("Score: "+ this.score, 10, 80);
     ctx.fillText("Lives: " + this.lives, 400, 80);
 
+    // If the player has lost, we want to display a Game Over message
     if(lostTheGame){
 
         ctx.font = "50px Arial";
@@ -175,16 +185,18 @@ var resetPlayer = function () {
 };
 
 // Something happened to the player
-// isDeath is a boolean to identify whether or not
-// we're reseting due to collision, or win condition
-var playerEvent = function(isDeath){
-
-    if(isDeath){
-        lossConditions();
-    } else{
-        winConditions();
+// Event is the event text passed in by the caller
+// Right now we're only checking for a win or a death
+// But this will make it easier to add other events in the future
+var playerEvent = function(event){
+    switch(event){
+        case 'death':
+            lossConditions();
+            break;
+        case 'win':
+            winConditions();
+            break;
     }
-
 };
 
 // generic hitbox update function
@@ -196,10 +208,13 @@ var updateHitBox = function(x, y, hitBox){
     hitBox.y = y;
 };
 
+// Called when the player loses a life
 var lossConditions = function(){
     // You died, lose a life
     player.lives = player.lives - 1;
     console.log("You have " + player.lives + " lives left");
+    // If the player is out of lives, we set the lost flag,
+    // and set all hitboxes to 0 size
     if(player.lives <= 0){
         lostTheGame = true;
         player.hitBox.width = 0;
@@ -209,6 +224,7 @@ var lossConditions = function(){
             enemy.hitBox.height = 0;
         });
     } else{
+        // if the player has lives left we just reset their position
         resetPlayer();
     }
 
@@ -228,6 +244,8 @@ var winConditions = function () {
     }
 };
 
+
+// When a player starts over, we reset all the initial values
 var resetGame = function() {
     player.hitBox.width = player.hitBoxWidth;
     player.hitBox.height = player.hitBoxHeight;
@@ -240,6 +258,7 @@ var resetGame = function() {
         enemy.hitBox.width = enemy.hitBoxWidth;
         enemy.hitBox.height = enemy.hitBoxHeight;
     });
+    // don't forget to turn off the lost flag
     lostTheGame = false;
 };
 
